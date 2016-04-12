@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:jaxws="http://cxf.apache.org/jaxws"
+	xsi:schemaLocation=" 
+   http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd   
+   http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd   
+   http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd 
+   http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd  
+   http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+   http://www.springframework.org/schema/task
+   http://www.springframework.org/schema/task/spring-task.xsd
+   http://cxf.apache.org/jaxws
+   http://cxf.apache.org/schemas/jaxws.xsd
+   "
+   default-autowire="byName" default-lazy-init="false">
+	<!-- 数据库连接配置文件 -->
+	<bean id="propertyConfigurer"
+		class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<value>classpath:jdbc.properties</value>
+		</property>
+	</bean>
+	<bean id="DBS" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="${local.mysql.one.driver}" />
+		<property name="url" value="${local.mysql.one.url}" />
+		<property name="username" value="${local.mysql.one.username}" />
+		<property name="password" value="${local.mysql.one.password}" />
+		<!-- 连接池启动时的初始值 -->
+		<property name="initialSize" value="${dbcp.initialSize}" />
+		<!-- 连接池的最大值 -->
+		<property name="maxActive" value="${dbcp.maxActive}" />
+		<!-- 最大空闲值.当经过一个高峰时间后，连接池可以慢慢将已经用不到的连接慢慢释放一部分，一直减少到maxIdle为止 -->
+		<property name="maxIdle" value="${dbcp.maxIdle}" />
+		<!-- 最小空闲值.当空闲的连接数少于阀值时，连接池就会预申请去一些连接，以免洪峰来时来不及申请 -->
+		<property name="minIdle" value="${dbcp.minIdle}" />
+		<!--#在取出连接时进行有效验证 -->
+		<property name="testOnBorrow" value="${dbcp.testOnBorrow}" />
+		<property name="validationQuery" value="${dbcp.validationQuery}" />
+		<property name="testOnReturn" value="${dbcp.testOnReturn}" />
+		<property name="testWhileIdle" value="${dbcp.testWhileIdle}" />
+		<property name="removeAbandonedTimeout" value="${dbcp.removeAbandonedTimeout}" />
+		<property name="removeAbandoned" value="${dbcp.removeAbandoned}" />
+		<!-- #运行判断连接超时任务的时间间隔，单位为毫秒，默认为-1，即不执行任务。 -->
+		<property name="timeBetweenEvictionRunsMillis" value="${dbcp.timeBetweenEvictionRunsMillis}" />
+		<!-- #连接的超时时间，默认为半小时。 -->
+		<property name="minEvictableIdleTimeMillis" value="${dbcp.minEvictableIdleTimeMillis}" />
+	</bean>
+
+	
+
+	<!-- 配置hibernate的sessionFactory -->
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource">
+			<ref bean="DBS" />
+		</property>
+		<property name="hibernateProperties">
+			<props>
+				<prop key="hibernate.dialect">${hibernate.dialect}</prop>
+				<prop key="hibernate.show_sql">${hibernate.show_sql}</prop>
+				<prop key="hibernate.format_sql">${hibernate.format_sql}</prop>
+				<prop key="hibernate.use_sql_comments">${hibernate.use_sql_comments}</prop>
+				<prop key="hibernate.max_fetch_depth">${hibernate.max_fetch_depth}</prop>
+				<prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>
+				<prop key="hibernate.default_batch_fetch_size">${hibernate.default_batch_fetch_size}</prop>
+				<prop key="hibernate.jdbc.batch_size">${hibernate.jdbc.batch_size}</prop>
+				<prop key="hibernate.cglib.use_reflection_optimizer">${hibernate.cglib.use_reflection_optimizer}</prop>
+			</props>
+		</property>
+
+		<property name="packagesToScan">
+			<list>
+				<value>org.plasea.generator.model</value>
+			</list>
+		</property>
+	</bean>
+	<bean id="hibernateDao" class="org.plasea.generator.dao.base.HibernateDao">
+		<property name="sessionFactory">
+			<ref bean="sessionFactory" />
+		</property>
+	</bean>
+
+	<!-- 定义事务管理器（声明式的事务） -->
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<tx:annotation-driven transaction-manager="transactionManager"
+		proxy-target-class="true" />
+	<!-- 发送邮件 -->
+	<!-- <bean id="javaMailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">	
+		<property name="protocol" value="smtp"/>
+		<property name="host" value="${mail.smtp.host}"/>
+		<property name="username" value="${mail.smtp.user}"/>
+		<property name="password" value="${mail.smtp.pass}"/>
+		<property name="defaultEncoding" value="UTF-8"/>
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.smtp.auth">true</prop>
+				<prop key="mail.debug">true</prop>
+			</props>
+		</property>
+	</bean>
+	<bean id="mailSender" class="com.jfbank.project.core.mail.impl.MailSenderImpl">	
+		<property name="username" value="${mail.smtp.user}"/>
+		<property name="password" value="${mail.smtp.pass}"/>
+	</bean> -->
+	
+	<bean id="baseDao" class="org.plasea.generator.dao.base.BaseDao" abstract="true">
+		<!-- <property name="jdbcDao" ref="jdbcDao" /> -->
+		<property name="hibernateDao" ref="hibernateDao" />
+	</bean>
+</beans>
